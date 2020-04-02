@@ -90,7 +90,9 @@ public class Singleton3 {
 }
 ```
 
-也可以把锁加在方法内
+但是这种方法带来的后果就是效率太低，所有对getInstance方法的调用，试图获取对象实例，都需要等待锁释放
+
+也可以把锁加在方法内 但是这样和加在方法上是一样的 核心问题是if(instance==null)这句如果被上锁 那么就会导致所有调用getInstance方法都需要等待锁
 
 ```
 public static Singleton3 getInstance(){
@@ -107,7 +109,7 @@ public static Singleton3 getInstance(){
 }
 ```
 
-但是如果锁再往下移动一行
+但是如果锁再往下移动一行 看似是保证了只有最初的一次请求会加锁
 
 ```
 public static Singleton3 getInstance(){
@@ -124,9 +126,144 @@ public static Singleton3 getInstance(){
 }
 ```
 
-是无法保证线程安全的，这是由于若某个线程A和B同时进入if后，A拿到了锁，执行了new语句后再释放锁，此时B又拿到了锁 那么对象就会被new两次
+但是这样是无法保证线程安全的，这是由于若某个线程A和B同时进入if后，A拿到了锁，执行了new语句后再释放锁，此时B又拿到了锁 那么对象就会被new两次
 
 
 
+## 1.4 双重校验锁
+
+```
+public class Singleton4 {
+    private Singleton4(){};
+    private static volatile Singleton4 instance;
+
+    public static Singleton4 getInstance(){
+        if(instance==null){
+            synchronized (Singleton4.class){
+                if(instance==null)
+                    instance=new Singleton4();
+            }
+        }
+        return instance;
+    }
+}
+```
+
+通过两次if判断，在保证new语句只被执行一次的情况下改善了1.3带来的效率问题
+
+在这种方法中，只有getInstance语句第一次被调用时，调用者才需要等待锁资源
+
+**volatile关键字是必须的**
+
+并不是说不加volatile就会导致可能有多个实例产生
+
+而是在实例化过程中分为三个指令步骤
+
+1.分配内存空间
+
+2.调用构造方法 进行初始化
+
+3.将对象赋值给变量
+
+这几个步骤有可能会被JVM进行指令重排优化 2和3步骤都依赖1步骤 所以1一定是最先执行的 但是2和3的顺序可能颠倒
+
+如果先进行了1后 直接进行了3 那么此时变量并不为null 也就是说他是不会进入外层的if(instance==null)的
+
+而这时候这个对象实际上是不完整的 因为他并没有进行2步骤的初始化过程 就可能会被直接return回去 这个被return回去的对象就是一个异常的对象
+
+所以加上volatile关键字 可以避免指令重排的发生
 
 
+
+## 1.5 静态内部类
+
+```
+public class Singleton5 {
+    private Singleton5(){};
+    private static class Singleton5Holder{
+        private static final Singleton5 instance=new Singleton5();
+    }
+    public static Singleton5 getInstance(){
+        return Singleton5Holder.instance;
+    }
+}
+```
+
+这种方式与1.1的饿汉式相似 区别在于1.1在Singleton类被装载时 对象就会实例化
+
+而这种方式中的holder类在Singleton类被装载时不会被装载，对象不会直接被实例化，而是在getInstance方法被调用时holder类被装载，对象进行实例化，
+
+JVM来保证了线程的安全性，类加载只会加载一次，holder只会被加载一次，也就保证了new语句只执行一次
+
+
+
+## 1.6 枚举实现
+
+```
+public enum Singleton6 {
+    INSTANCE;
+
+    public static Singleton6 getInstance(){
+        return INSTANCE;
+    }
+}
+```
+
+不添加getInstance方法直接使用Singleton.INSTANCE也可以
+
+枚举实现可以防止通过反射的方式强行调用私有的构造器
+
+在前五个类中都可以通过以下方式实现
+
+```
+//        Singleton5 singleton5A=Singleton5.getInstance();
+//        Singleton5 singleton5B=Singleton5.getInstance();
+//        System.out.println(singleton5A==singleton5B);
+//        Constructor con=Class.forName("singleton.Singleton5").getDeclaredConstructor();
+//        con.setAccessible(true);
+//        Object obj=con.newInstance();
+//        Singleton5 singleton5C=(Singleton5)obj;
+//        System.out.println(singleton5A==singleton5C);
+```
+
+通过getDeclaredConstructor()方法获取构造器后setAccessible(true);
+
+调用即可
+
+但是用这种方式测试枚举单例时会报错：
+
+Exception in thread "main" java.lang.NoSuchMethodException: singleton.Singleton6.<init>()
+	at java.lang.Class.getConstructor0(Class.java:3082)
+	at java.lang.Class.getDeclaredConstructor(Class.java:2178)
+
+
+
+这是因为并没有找到无参的构造器
+
+通过Constructor[] cons=Class.forName("singleton.Singleton6").getDeclaredConstructors();
+
+获取枚举单例的构造器发现：
+
+![image-20200402172116896](image-20200402172116896.png)
+
+只有一个(String,int)类型的构造器
+
+查看Enum源码可以找到这个构造器：
+
+![image-20200402172431030](image-20200402172431030.png)
+
+直接指定这个构造器
+
+```
+Constructor con=Class.forName("singleton.Singleton6").getDeclaredConstructor(String.class,int.class);
+```
+
+仍然报错java.lang.IllegalArgumentException: Cannot reflectively create enum objects
+
+翻译过来很明显就是不能用反射的方式创建一个枚举对象
+
+在Constructor类的newInstance方法中抛出了这个异常
+
+![image-20200402172919454](image-20200402172919454.png)
+
+同时可以避免序列化问题
