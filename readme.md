@@ -267,3 +267,140 @@ Constructor con=Class.forName("singleton.Singleton6").getDeclaredConstructor(Str
 ![image-20200402172919454](image-20200402172919454.png)
 
 同时可以避免序列化问题
+
+
+
+# 2.策略模式
+
+## 定义
+
+定义了算法族，分别封装起来，让它们之间可相互替换，此模式让算法的变化独立于使用算法的客户。
+
+## 说明
+
+将可能改变的部分（行为、算法）抽离出来作为一组独立的类，通常用接口，具体的行为/算法实现该接口，可以轻松的扩充、改变，需要用到这一行为/算法的对象超类中持有行为类接口对象，将行为委托给行为类对象去处理，通过传入不同的具体行为实现，可以使对象有不同的行为。通过超类中对行为对象的setter方法，可以随时改变行为。
+
+## HeadFirst举例
+
+一系列鸭子玩具都继承Duck类，Duck类有quack(叫)、swim方法的实现和外观的抽象，新的玩具继承这个类并实现外观方法。此时想要让鸭子玩具可以飞，在Duck超类中添加了fly方法，结果导致了橡皮鸭子也会飞，引出了问题：在超类中添加方法，会导致某些不应该具有这一行为的子类也具有该行为。
+
+这样只能在子类中覆盖掉父类的方法，使得子类在某些行为上有自己的实现，使用继承并不是最好的方法。
+
+
+
+使用接口，如设计一个flyable接口，让会飞的鸭子去实现这一接口，但是如果不同的子类对于飞行有不同的实现，那么也无法完成。
+
+
+
+如果将可能改变的部分，fly和quack部分抽离出来，建立两组类，分别为flyBehavior 和quackBehavior ,让这两组类去实现动作，然后让Duck类持有这两个变量，通过构造器注入和setter注入的方式，在创建具体Duck子类的时候传入某个实现了behavior接口的实例，使其拥有某种具体行为，setter方法可以在中途更换行为。
+
+## 代码实现
+
+使用HeadFirst中练习中的例子：
+
+设计一款游戏，游戏有不同的角色，不同角色有自己的属性，角色可以使用不同的武器进行攻击，但是一次只能使用一种，可以在游戏的过程中切换武器。
+
+
+
+1.Character类为角色超类
+
+```
+public abstract class Character {
+    String name;
+    Weapon weapon;
+
+    public void setWeapon(Weapon weapon){
+        this.weapon=weapon;
+    }
+
+    public void attack(){
+        //将攻击行为委托给武器
+        weapon.attack();
+    }
+}
+```
+
+2.Weapon是不同武器所需实现的接口
+
+```
+public interface Weapon {
+    public void attack();
+}
+```
+
+3.Arrow与Knife是具体武器
+
+```
+public class Arrow implements Weapon {
+
+    @Override
+    public void attack() {
+        System.out.println("弓箭攻击");
+    }
+}
+public class Knife implements Weapon{
+    @Override
+    public void attack() {
+        System.out.println("小刀攻击");
+    }
+}
+```
+
+4.Knight是某一具体角色实现
+
+```
+public class Knight extends Character {
+    public Knight(String name){
+        this.name=name;
+    }
+}
+```
+
+5.测试
+
+```
+public class Test {
+    public static void main(String[] args) {
+        Character character=new Knight("骑士A");
+        character.setWeapon(new Knife());
+        character.attack();
+        character.setWeapon(new Arrow());
+        character.attack();
+    }
+}
+```
+
+先使用knife攻击 更换武器后使用arrow攻击
+
+## 总结
+
+个人认为的策略模式的要点在于
+
+1.明确哪些部分是可替换/需要替换的算法簇
+
+2.设置behavior接口，具体的算法需要实现这一接口
+
+3.使用这一算法的客户（对象）持有behavior遍历，可以随时替换
+
+4.将“使用算法”这一行为委托给算法本身进行
+
+
+
+优点：
+
+1.可以随时切换算法
+
+2.良好的拓展性，增加算法的时候实现接口即可
+
+
+
+缺点：
+
+1.每个算法（策略）都是一个类，类的数量会很多
+
+2.如果让算法调用者来选择算法，那么需要调用者了解所有的算法，这也会暴露算法的具体实现
+
+实际使用中策略模式可以与工厂模式相结合，这样调用者并不知道算法的具体实现，得到的是一个behavior
+
+
+
