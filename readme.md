@@ -404,3 +404,121 @@ public class Test {
 
 
 
+# 3.观察者模式
+
+## 定义
+
+在对象之间定义一对多的依赖，这样当一个对象改变状态，依赖他的对象都会收到通知，并自动更新
+
+## 场景
+
+一个对象（目标对象）的状态发生改变，所有的依赖对象（观察者对象）都将得到通知，进行广播通知
+
+## 举例
+
+气象站的WeatherData对象有几个天气属性，当这些属性改变时，几个公告板应该收到通知并展示新的天气属性
+
+## 实现
+
+实现的核心点在于，在subject中添加一个观察者列表和对应的add/remove方法来增加/删除观察者，以及一个通知方法来通知所有的观察者
+
+可以用一个subject接口，实现subject接口的具体主题都应该具有这三个方法。
+
+也可以选择继承java.util包中的Observable类
+
+Observable类中用一个
+
+```
+private Vector<Observer> obs;
+```
+
+来保存所有观察者
+
+构造方法中初始化该列表
+
+```
+public Observable() {
+    obs = new Vector<>();
+}
+```
+
+拥有addObserver deleteObserver方法来添加/取消订阅
+
+```
+notifyObservers()和notifyObservers(Object arg) 
+```
+
+两个方法分别对应pull和push两种数据传递方式
+
+前者实际上是调用了后者notifyObservers(null);
+
+后者即遍历观察者列表依次调用Observer的update方法
+
+Observer是一个接口，其update方法如下：
+
+```
+void update(Observable o, Object arg);
+```
+
+传入一个observable对象和一个数据对象
+
+pull方法调用的update是传入了空的arg对象，只传入了observable对象
+
+使得订阅者主动从observable中get需要的数据（需要observable提供getter类似方法）
+
+push方法将需要发送给订阅者的数据组装成Object，调用update方式传递给订阅者
+
+
+
+observable中还包含setChanged() hasChanged()和clearChanged()方法和对应的boolean变量
+
+这可以更加有弹性的在数据发生改变时选择是否通知订阅者
+
+比如当数据变动极小时，并不调用hasChanged方法，这样就不会通知订阅者
+
+
+
+实现中使用了pull形式
+
+Subject：
+
+```
+public class SubjectA extends Observable {
+    private String message;
+
+    public String getMessage(){return message;}
+
+    public void setMessage(String message){
+        this.message=message;
+        setChanged();
+        notifyObservers();
+    }
+}
+```
+
+Observer
+
+```
+public class ObserverA implements Observer {
+    @Override
+    public void update(Observable o, Object arg) {
+        if(o instanceof SubjectA){
+            System.out.println("接受到来自SubjectA的数据"+((SubjectA) o).getMessage());
+        }
+    }
+}
+```
+
+Test:
+
+```
+public class Test {
+    public static void main(String[] args) {
+        SubjectA subjectA=new SubjectA();
+        ObserverA observerA=new ObserverA();
+        subjectA.addObserver(observerA);
+        subjectA.setMessage("Test");
+    }
+}
+```
+
