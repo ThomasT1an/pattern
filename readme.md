@@ -522,3 +522,128 @@ public class Test {
 }
 ```
 
+# 4.装饰者模式
+
+## 定义
+
+动态地将责任（功能）附加到对象身上，比继承更加具有弹性
+
+## 场景
+
+扩展一个类的功能 动态的增加/删除功能
+
+在不想增加过多子类的情况下扩展类 咖啡和小料
+
+## 举例
+
+不同装备具有不同的攻击力
+
+镶嵌宝石可以增加装备的攻击力
+
+一个装备可以镶嵌多个宝石
+
+# 代码实现
+
+1.装备接口
+
+```
+public interface Equipment {
+    /**
+     * 获取攻击力
+     * @return
+     */
+     int getAttack();
+
+    /**
+     * 获取描述
+     * @return
+     */
+     String getDesc();
+}
+```
+
+2.剑
+
+```
+public class Sword implements Equipment {
+    @Override
+    public int getAttack() {
+        return 100;
+    }
+
+    @Override
+    public String getDesc() {
+        return "剑";
+    }
+}
+```
+
+3.宝石超类 需要实现Equipment 这里的实现并不是为了“规范行为”，而是为了“规范类型”，使得装饰者本身也可以被装饰
+
+```
+public abstract class GemStone implements Equipment{
+    protected Equipment equipment;
+
+    public GemStone(Equipment equipment){
+        this.equipment=equipment;
+    }
+
+    public abstract int getAttack();
+
+    public abstract String getDesc();
+}
+```
+
+4.红宝石
+
+```
+public class RedGemStone extends GemStone {
+    public RedGemStone(Equipment equipment) {
+        super(equipment);
+    }
+
+    @Override
+    public int getAttack() {
+        return 5+equipment.getAttack();
+    }
+
+    @Override
+    public String getDesc() {
+        return equipment.getDesc()+"+红宝石";
+    }
+}
+```
+
+5.绿宝石
+
+```
+public class GreenGemStone extends GemStone {
+    public GreenGemStone(Equipment equipment) {
+        super(equipment);
+    }
+
+    @Override
+    public int getAttack() {
+        return 8+equipment.getAttack();
+    }
+
+    @Override
+    public String getDesc() {
+        return equipment.getDesc()+"+绿宝石";
+    }
+}
+```
+
+6.测试
+
+```
+public class Test {
+    public static void main(String[] args) {
+        Equipment sword=new Sword();
+        sword=new GreenGemStone(new GreenGemStone(new RedGemStone(sword)));
+        System.out.println(sword.getAttack()); //121
+        System.out.println(sword.getDesc()); //剑+红宝石+绿宝石+绿宝石
+    }
+}
+```
+

@@ -9,9 +9,12 @@ import java.util.Observer;
  */
 public class Test {
     public static void main(String[] args) {
-        SubjectA subjectA=new SubjectA();
-        ObserverA observerA=new ObserverA();
-        subjectA.addObserver(observerA);
-        subjectA.setMessage("Test");
+//        SubjectA subjectA=new SubjectA();
+////        ObserverA observerA=new ObserverA();
+////        subjectA.addObserver(observerA);
+////        subjectA.setMessage("Test");
+
+        String a=null;
+        System.out.println(a.length());
     }
 }
