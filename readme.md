@@ -647,3 +647,224 @@ public class Test {
 }
 ```
 
+# 5.工厂模式
+
+## 简单工厂/静态工厂
+
+computer接口
+
+```
+public interface Computer {
+    void describeComputer();
+}
+```
+
+两个实现
+
+```
+public class MacBookComputer implements Computer {
+    @Override
+    public void describeComputer() {
+        System.out.println("This is a macbook");
+    }
+}
+```
+
+
+
+```
+public class DellComputer implements Computer{
+
+    @Override
+    public void describeComputer() {
+        System.out.println("This is a dell");
+    }
+}
+```
+
+工厂：
+
+```
+public  class ComputerFacotry {
+    public static Computer createComputer(String name){
+        Computer computer=null;
+        if(name.equals("macbook"))
+            computer=new MacBookComputer();
+        if(name.equals("dell"))
+            computer=new DellComputer();
+        return computer;
+    }
+}
+```
+
+商店
+
+```
+public class Store {
+    public void buy(Computer computer){
+        computer.describeComputer();
+    }
+}
+```
+
+测试
+
+```
+public class Test {
+    public static void main(String[] args) {
+        Store store=new Store();
+        Computer computer=ComputerFacotry.createComputer("macbook");
+        store.buy(computer);
+    }
+}
+```
+
+### 说明：
+
+简单工厂专门定义一个类用来创建其它类的实例，被创建的实例通常都具有共同的父类，这里我们相当于是创建生产电脑的工厂，客户需要购买什么样的电脑，只要输入类型编号就可以获取该电脑，而无需知道该电脑是如何被生产出来的
+
+只不过是把if的判断和new的逻辑从原本的商店中移到了工厂中，简单工厂实际上并不算不上一个设计模式，而是一种编程习惯。
+
+将制造对象这一行为抽离出来也可以使工厂作用于其他需要产生对象的地方。
+
+在工厂中可以使用枚举来定义类与类型编号的对应关系。
+
+缺点是如果此时需要新增一个类型的产品，那么就需要去修改factory的代码，从而违反了开闭原则
+
+
+
+## 工厂方法模式
+
+定义：
+
+**定义一个用来创建对象的接口，让子类决定实例化哪一个类，让子类决定实例化延迟到子类。**
+
+他针对每个产品提供一个工厂类，在客户端中判断使用哪个工厂类去创建对象
+
+实现：
+
+把原来的ComputerFactory抽象为一个接口
+
+```
+public  interface ComputerFacotry {
+     Computer createComputer();
+}
+```
+
+不同产品提供不同实现
+
+```
+public class MacBookFactory implements ComputerFacotry {
+    @Override
+    public Computer createComputer() {
+        return new MacBookComputer();
+    }
+}
+```
+
+测试：
+
+```
+public class Test {
+    public static void main(String[] args) {
+        Store store=new Store();
+        ComputerFacotry computerFacotry=new MacBookFactory();
+        store.buy(computerFacotry.createComputer());
+    }
+}
+```
+
+工厂方法模式是针对每个产品提供一个工厂类，在客户端中判断使用哪个工厂类去创建对象
+
+相比于简单工厂，创建对象的逻辑判断放在了工厂类中，客户不感知具体的类，但是其违背了开闭原则，如果要增加新的具体类，就必须修改工厂类。
+
+对于工厂方法模式而言，是通过扩展来新增具体类的，符合开闭原则，但是在客户端就必须要感知到具体的工厂类，也就是将判断逻辑由简单工厂的工厂类挪到客户端，工厂方法的拓展很方便，如果有新的产品，创建新的工厂类和产品类即可，不用修改原有的代码，不过这样也会导致类的数量很多。
+
+
+
+## 抽象工厂
+
+当工厂模式创建的类扩展为一族类时，就可以称为抽象工厂
+
+抽象工厂模式：提供一个创建一系列相关或相互依赖对象的接口，而无需指定它们具体的类
+
+**工厂方法模式和抽象工厂模式基本类似，可以这么理解：当工厂只生产一个产品的时候，即为工厂方法模式，而工厂如果生产两个或以上的商品即变为抽象工厂模式。**
+
+增加操作系统这一类产品，在Mac中搭配MacOS 在dell上搭配windows
+
+
+
+增加操作系统接口
+
+```
+public interface OperatingSystem {
+    void getSystemName();
+}
+```
+
+和两个实现
+
+```public class MacOSSystem implements OperatingSystem {    @Override    public void getSystemName() {        System.out.println(&quot;This is MacOsSystem&quot;);    }}
+public class WindowsSystem implements OperatingSystem {
+    @Override
+    public void getSystemName() {
+        System.out.println("This is windows System");
+    }
+}
+```
+
+```
+public class MacOSSystem implements OperatingSystem {
+    @Override
+    public void getSystemName() {
+        System.out.println("This is MacOsSystem");
+    }
+}
+```
+
+在ComputerFactory中添加操作系统的方法
+
+```
+OperatingSystem loadSystem();
+```
+
+在MacBookFactory中增加实现
+
+```
+public class MacBookFactory implements ComputerFacotry {
+    @Override
+    public Computer createComputer() {
+        return new MacBookComputer();
+    }
+
+    @Override
+    public OperatingSystem loadSystem() {
+        return new MacOSSystem();
+    }
+}
+```
+
+在store类中增加use方法
+
+```
+public void use(OperatingSystem operatingSystem){
+    operatingSystem.getSystemName();
+}
+```
+
+测试
+
+```
+public class Test {
+    public static void main(String[] args) {
+        Store store=new Store();
+        ComputerFacotry computerFacotry=new MacBookFactory();
+        Computer computer=computerFacotry.createComputer();
+        OperatingSystem operatingSystem=computerFacotry.loadSystem();
+
+        store.buy(computer);
+        store.use(operatingSystem);
+    }
+}
+```
+
